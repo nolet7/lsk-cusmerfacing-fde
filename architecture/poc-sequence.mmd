@@ -1,0 +1,22 @@
+sequenceDiagram
+ participant C as Customer
+ participant UI as Portal
+ participant API as FDE FastAPI
+ participant ERP as Synthetic ERP / SQL
+ participant AI as Optional LLM
+ participant CS as Account Manager
+ C->>UI: Ask about work order
+ UI->>API: POST inquiry, demo tenant header
+ API->>ERP: Tenant-scoped SQL lookup
+ ERP-->>API: Authorized order facts
+ opt Approved LLM enabled
+ API->>AI: Allowlisted data and grounded question
+ AI-->>API: Draft only
+ end
+ API->>API: Server-side approval classification
+ API->>ERP: Store case/audit-like record
+ API-->>UI: Draft, source, review required
+ UI-->>C: Display draft
+ opt Commercial or engineering commitment
+ CS->>API: Review outside POC automation
+ end
