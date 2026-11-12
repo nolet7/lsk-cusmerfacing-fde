@@ -1,0 +1,26 @@
+sequenceDiagram
+ participant C as Customer
+ participant LB as HTTPS WAF and Ingress
+ participant ID as Enterprise Identity Provider
+ participant API as GKE FastAPI Pods
+ participant DB as Cloud SQL / ERP Adapter
+ participant LLM as Approved Private Model Endpoint
+ participant H as Approval Queue
+ participant OBS as Audit and Telemetry
+ C->>ID: Sign in
+ ID-->>C: Signed JWT
+ C->>LB: Work-order inquiry
+ LB->>API: Forward TLS request
+ API->>API: Validate JWT and customer permissions
+ API->>DB: Tenant-filtered work-order read
+ DB-->>API: Authorized facts
+ API->>LLM: Minimized grounded prompt
+ LLM-->>API: Draft
+ API->>API: Fact/approval policy checks
+ opt Restricted decision
+ API->>H: Pending review
+ H-->>API: Authorized disposition
+ end
+ API->>OBS: Correlated trace and audit metadata
+ API-->>LB: Response/case status
+ LB-->>C: Customer-facing response
