@@ -1,0 +1,23 @@
+sequenceDiagram
+ participant C as Customer
+ participant ID as Enterprise OIDC
+ participant UI as Customer Portal
+ participant API as Authenticated Integration API
+ participant ERP as ERP and CRM
+ participant LLM as Approved Inference Service
+ participant H as Human Approver
+ C->>ID: Authenticate
+ ID-->>UI: Signed token
+ UI->>API: Inquiry with bearer token
+ API->>API: Verify signature, audience, scope, tenant
+ API->>ERP: Tenant- and account-filtered lookup
+ ERP-->>API: Allowlisted business facts
+ API->>LLM: Minimized authorized facts + policy
+ LLM-->>API: Draft + references
+ API->>API: Validate/flag risk + audit
+ alt Quote, hold, or commitment
+ API->>H: Pending approval
+ H-->>API: Approve or reject
+ end
+ API-->>UI: Reviewed response and case ID
+ UI-->>C: Case update
