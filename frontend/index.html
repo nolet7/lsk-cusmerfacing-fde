@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>LSK Aerospace Customer Portal</title>
+<style>body{max-width:780px;margin:4rem auto;font:16px system-ui;color:#17233d}input,select,textarea,button{display:block;width:100%;padding:12px;margin:10px 0;box-sizing:border-box}button{background:#183f7a;color:white;border:0;cursor:pointer}pre{white-space:pre-wrap;background:#eef3f9;padding:20px}</style></head>
+<body><h1>Repair order inquiry</h1><p>Fictional aerospace service customer demo. Synthetic records only.</p>
+<label>Customer (demo tenant)</label><select id="tenant"><option value="acme-air">Acme Air</option><option value="sky-jet">Sky Jet</option></select>
+<label>Work order</label><input id="order" value="WO-1001">
+<label>Question</label><textarea id="question">What is the service status and shipping progress?</textarea>
+<button onclick="ask()">Prepare customer response</button><pre id="result" role="status"></pre>
+<script>async function ask(){const res=await fetch('/api/v1/inquiries',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Tenant':document.getElementById('tenant').value},body:JSON.stringify({order_id:document.getElementById('order').value,question:document.getElementById('question').value})});document.getElementById('result').textContent=JSON.stringify(await res.json(),null,2)}</script></body></html>
