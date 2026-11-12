@@ -1,0 +1,15 @@
+flowchart LR
+ A[Sales discovery] --> B[Solution workshop]
+ B --> C[Legacy CRM ERP Support]
+ C --> D[Python REST integration]
+ D --> E[Read only Account 360]
+ E --> F[Approved tool context]
+ F --> G{LLM configured?}
+ G -->|Yes| H[Grounded AI briefing]
+ G -->|No| I[Deterministic summary]
+ H --> J[Customer demonstration]
+ I --> J
+ J --> K[POC acceptance]
+ K --> L[Pilot adoption]
+ L --> M[Production readiness]
+ M --> N[Customer handover]

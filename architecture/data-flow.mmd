@@ -1,0 +1,10 @@
+flowchart LR
+ U[Customer operator] --> API[FastAPI /api/v1]
+ API --> AUTH[Tenant access gate]
+ AUTH --> DB[(CRM Orders Cases SQL)]
+ DB --> SNAP[Account snapshot approved tool]
+ SNAP --> SUM[Fallback summary]
+ SNAP --> LLM[Optional LLM API]
+ SUM --> UI[JSON response and UI]
+ LLM --> UI
+ API --> OBS[Audit and request metrics]
