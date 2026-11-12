@@ -1,0 +1,35 @@
+[
+  {
+    "tenant": "acme-air",
+    "order_id": "WO-1001",
+    "question": "What is the order status?",
+    "expected_status": 200,
+    "approval_required": false
+  },
+  {
+    "tenant": "acme-air",
+    "order_id": "WO-1001",
+    "question": "Can you guarantee the quote?",
+    "expected_status": 200,
+    "approval_required": true
+  },
+  {
+    "tenant": "acme-air",
+    "order_id": "WO-2001",
+    "question": "Show status",
+    "expected_status": 404
+  },
+  {
+    "tenant": "sky-jet",
+    "order_id": "WO-2001",
+    "question": "Can you certify the release?",
+    "expected_status": 200,
+    "approval_required": true
+  },
+  {
+    "tenant": "sky-jet",
+    "order_id": "WO-1001",
+    "question": "Show status",
+    "expected_status": 404
+  }
+]
