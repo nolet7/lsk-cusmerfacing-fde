@@ -4,6 +4,8 @@ import sqlite3
 import time
 from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse
+from app.llm import answer as llm_answer
 from pydantic import BaseModel, Field
 
 DB = Path(os.getenv("DEMO_DB", "/tmp/lsk_aerospace_demo.sqlite3"))
@@ -54,6 +56,10 @@ def tenant(value: str | None):
         raise HTTPException(401,"Demo tenant header required")
     return value
 
+@app.get("/")
+def portal():
+    return FileResponse(Path(__file__).resolve().parent.parent / "frontend" / "index.html")
+
 @app.get("/health")
 def health():
     return {"status":"ok","mode":"synthetic-demo"}
@@ -73,6 +79,17 @@ def ask(inquiry:Inquiry,x_demo_tenant:str | None=Header(default=None)):
            + (f"Recorded target date: {order['promised_date']}. " if order['promised_date'] else "No target date is recorded. ")
            + ("Quality hold is active; consult your account manager. " if order['quality_hold'] else "")
            + "Source: ERP simulated order record. This is a draft, not a commercial or airworthiness commitment.")
+    ai_mode="deterministic-fallback"
+    if os.getenv("OPENAI_API_KEY"):
+        try:
+            llm_draft=llm_answer(order,inquiry.question)
+            if llm_draft:
+                # The LLM drafts only; work-order facts/approval remain server-controlled.
+                draft=llm_draft + "\\nSource: " + order["order_id"] + ". This is a draft, not a commercial or airworthiness commitment."
+                ai_mode="live-llm"
+        except Exception:
+            # Never fail open or assert LLM success on provider errors.
+            ai_mode="deterministic-fallback-provider-error"
     requires=any(t in inquiry.question.lower() for t in ("price","quote","guarantee","release","certif","commit","expedite","eta"))
     with connect() as con:
         cur=con.execute("INSERT INTO cases(tenant_id,order_id,question,draft,approval_required) VALUES (?,?,?,?,?)",
@@ -80,7 +97,7 @@ def ask(inquiry:Inquiry,x_demo_tenant:str | None=Header(default=None)):
         case_id=cur.lastrowid
     return {"case_id":case_id,"order_id":order["order_id"],"draft":draft,
             "source_ids":[order["order_id"]],"approval_required":requires,
-            "ai_mode":"deterministic-fallback","elapsed_ms":round((time.perf_counter()-started)*1000,2)}
+            "ai_mode":ai_mode,"elapsed_ms":round((time.perf_counter()-started)*1000,2)}
 
 @app.get("/api/v1/cases")
 def cases(x_demo_tenant:str | None=Header(default=None)):
