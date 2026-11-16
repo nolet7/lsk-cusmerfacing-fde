@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LSK Enterprise Logistics</title>
+<style>
+body{max-width:900px;margin:2rem auto;padding:0 1rem;font:16px system-ui;color:#142336}
+header,section{margin-bottom:1rem;padding:1rem;border:1px solid #bccbd7;border-radius:.7rem}
+input,textarea,button{font:inherit;padding:.6rem;margin:.35rem}input,textarea{width:90%}
+button{background:#17456c;color:white;border:0;border-radius:.35rem;cursor:pointer}
+button:disabled{opacity:.5}pre{padding:1rem;background:#f1f6f8;white-space:pre-wrap;word-break:break-word}
+</style></head><body>
+<header><h1>Enterprise Logistics Operations</h1><p>Microsoft Entra protected read-only order lookup and human investigation intake.</p>
+<button id="signin">Sign in</button><button id="signout">Sign out</button>
+<p id="session" role="status">Not signed in.</p></header>
+<section><h2>Order lookup</h2><label for="order">ERP sales order</label>
+<input id="order" value="SO-1001" maxlength="64" autocomplete="off">
+<button id="lookup">Get unified order</button><button id="exceptions">View delivery exceptions</button></section>
+<section><h2>Human investigation</h2><label for="note">Investigation note</label>
+<textarea id="note" maxlength="1000">Review shipment event and follow up with the carrier.</textarea>
+<button id="create">Open investigation</button><button id="cases">List investigations</button></section>
+<pre id="output" aria-live="polite">Sign in to continue.</pre>
+<script type="module" src="/src/main.js"></script>
+</body></html>
