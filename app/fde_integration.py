@@ -8,7 +8,9 @@ import sqlite3
 from datetime import date
 from urllib.parse import quote
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.identity import authorized_tenant
+from app import case_store
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v2/logistics", tags=["fde-integration"])
@@ -94,15 +96,15 @@ async def snapshot(client, cfg, tenant_id, order_id):
             "as_of_date":date.today().isoformat(),"data_mode":"synthetic-http-integration"}
 
 @router.get("/orders/{order_id}")
-async def unified_order(order_id:str,x_demo_tenant:str|None=Header(default=None)):
-    tenant_id = _tenant(x_demo_tenant)
+async def unified_order(order_id:str,tenant_id: str = Depends(authorized_tenant)):
+    tenant_id = tenant_id
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         return await snapshot(client,cfg,tenant_id,order_id)
 
 @router.get("/exceptions")
-async def exceptions(x_demo_tenant:str|None=Header(default=None)):
-    tenant_id = _tenant(x_demo_tenant)
+async def exceptions(tenant_id: str = Depends(authorized_tenant)):
+    tenant_id = tenant_id
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         listing=await source(client,cfg["ERP_BASE_URL"],"/v1/orders",
@@ -122,29 +124,19 @@ class InvestigationRequest(BaseModel):
     note:str=Field(min_length=3,max_length=1000)
 
 @router.post("/investigations",status_code=201)
-async def open_investigation(body:InvestigationRequest,x_demo_tenant:str|None=Header(default=None)):
-    tenant_id=_tenant(x_demo_tenant)
+async def open_investigation(body:InvestigationRequest,tenant_id: str = Depends(authorized_tenant)):
+    tenant_id=tenant_id
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         result=await snapshot(client,cfg,tenant_id,body.order_id)
     reason=result["late_delivery"]["reason_code"]
     if not reason:
         raise HTTPException(409,"Order has no detected delivery exception")
-    with _connect() as db:
-        cursor=db.execute(
-            "INSERT INTO investigations(tenant_id,order_id,reason_code,note) VALUES (?,?,?,?)",
-            (tenant_id,body.order_id,reason,body.note)
-        )
-        investigation_id=cursor.lastrowid
+    investigation_id=case_store.create_investigation(tenant_id,body.order_id,reason,body.note,_connect)
     return {"investigation_id":investigation_id,"order_id":body.order_id,
             "reason_code":reason,"status":"OPEN","data_mode":"synthetic"}
 
 @router.get("/investigations")
-def list_investigations(x_demo_tenant:str|None=Header(default=None)):
-    tenant_id=_tenant(x_demo_tenant)
-    with _connect() as db:
-        rows=db.execute(
-            "SELECT investigation_id,order_id,reason_code,note,status,created_at FROM investigations WHERE tenant_id=? ORDER BY investigation_id DESC LIMIT 100",
-            (tenant_id,)
-        ).fetchall()
-    return {"items":[dict(row) for row in rows],"data_mode":"synthetic"}
+def list_investigations(tenant_id: str = Depends(authorized_tenant)):
+    tenant_id=tenant_id
+    return {"items":case_store.list_investigations(tenant_id,_connect),"data_mode":"synthetic"}
