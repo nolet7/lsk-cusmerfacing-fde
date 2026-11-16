@@ -3,7 +3,7 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from app.llm import answer as llm_answer
 from app import logistics, fde_integration
@@ -38,6 +38,11 @@ def initialize():
 
 @app.on_event("startup")
 def startup():
+    if os.getenv('FDE_ENV','local').lower() not in ('local','test'):
+        if os.getenv('FDE_IDENTITY_MODE') != 'entra' or os.getenv('FDE_CASE_STORE') != 'postgres':
+            raise RuntimeError('Deployed environments require Entra identity and PostgreSQL case store')
+        if not os.getenv('ENTRA_TENANT_ID') or not os.getenv('ENTRA_API_AUDIENCE') or not os.getenv('DATABASE_URL'):
+            raise RuntimeError('Missing enterprise identity/database configuration')
     initialize()
     logistics.initialize(connect)
     fde_integration.initialize(connect)
@@ -115,3 +120,11 @@ app.include_router(logistics.router)
 
 fde_integration.configure(connect,tenant)
 app.include_router(fde_integration.router)
+
+@app.middleware("http")
+async def deny_legacy_in_enterprise(request: Request, call_next):
+    if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
+        if request.url.path == "/" or request.url.path.startswith("/api/v1/"):
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=404,content={"detail":"Demo UI and v1 routes disabled in enterprise mode"})
+    return await call_next(request)
