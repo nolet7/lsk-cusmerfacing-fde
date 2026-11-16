@@ -8,7 +8,7 @@ param workloadIdentityId string
 param acrLoginServer string
 param jobImage string
 @secure()
-param databaseUrlSecretUri string
+param ingestionDatabaseUrlSecretUri string
 @secure()
 param connectorTokenSecretUri string
 param erpBaseUrl string
@@ -48,7 +48,7 @@ resource job 'Microsoft.App/jobs@2024-03-01' = {
       secrets: [
         {
           name: 'db-url'
-          keyVaultUrl: databaseUrlSecretUri
+          keyVaultUrl: ingestionDatabaseUrlSecretUri
           identity: workloadIdentityId
         }
         {
