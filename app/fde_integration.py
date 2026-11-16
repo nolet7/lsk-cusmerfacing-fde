@@ -112,11 +112,13 @@ async def unified_order(order_id:str,tenant_id: str = Depends(authorized_tenant)
         return await snapshot(client,cfg,tenant_id,order_id)
 
 @router.get("/exceptions")
-async def exceptions(tenant_id: str = Depends(authorized_tenant)):
+async def exceptions(tenant_id: str = Depends(authorized_tenant),
+                     limit: int = Query(default=50,ge=1,le=100),
+                     offset: int = Query(default=0,ge=0,le=100000)):
     # Demo list performs N+1 source calls. Prevent unbounded enterprise fan-out
     # until a paginated, freshness-aware indexed exception read model is in place.
     if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
-        return exception_store.list_exceptions(tenant_id,limit=50,offset=0)
+        return exception_store.list_exceptions(tenant_id,limit=limit,offset=offset)
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         listing=await source(client,cfg["ERP_BASE_URL"],"/v1/orders",
