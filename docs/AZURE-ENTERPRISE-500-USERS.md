@@ -25,9 +25,9 @@ flowchart LR
   API --> ACR[ACR signed/pinned image prerequisite]
 ```
 
-**Security boundary:** The legacy `X-Demo-Tenant` header is rejected in Azure mode. Entra access tokens must have valid issuer, signature, expiry and audience; role `Logistics.Read`; and a *trusted issued* `customer_tenant_id` claim. The claim is **not a standard Entra claim**, so an approved claims-mapping policy or trusted API token exchange is a prerequisite. The old v1 customer portal/inquiry routes are disabled in deployed mode. A real Entra-aware SPA or internal client application must be supplied before end-user rollout.
+**Security boundary:** The legacy `X-Demo-Tenant` header is rejected in Azure mode. Entra access tokens must have valid issuer, signature, expiry and audience; role `Logistics.Read` for GET and `Logistics.Write` for investigation POST; and a *trusted issued* `customer_tenant_id` claim. The claim is **not a standard Entra claim**, so an approved claims-mapping policy or trusted API token exchange is a prerequisite. The old v1 customer portal/inquiry routes are disabled in deployed mode. A real Entra-aware SPA or internal client application must be supplied before end-user rollout.
 
-**Identity details:** Entra app registration for the **protected API** must expose a legitimate application role `Logistics.Read`, assign it to approved users/groups, and issue access tokens to the correct API audience. Test role revocation, tenant spoofing, cross-customer access, token expiration, JWKS refresh, key rotation, malformed tokens and delegated vs application permissions before UAT. Do not use ID tokens as API access tokens.
+**Identity details:** Entra app registration for the **protected API** must expose legitimate application roles `Logistics.Read` and `Logistics.Write`, assign it to approved users/groups, and issue access tokens to the correct API audience. Test role revocation, tenant spoofing, cross-customer access, token expiration, JWKS refresh, key rotation, malformed tokens and delegated vs application permissions before UAT. Do not use ID tokens as API access tokens.
 
 ## 2. Sizing assumption — 500 users does not mean 500 simultaneous requests
 
@@ -43,11 +43,11 @@ flowchart LR
 | DB case connection pool | Maximum 5 per API replica, up to 60 pooled connections at 12 replicas |
 | PostgreSQL starting profile | General Purpose, 4 vCPU, 128 GiB, zone-redundant HA, private VNet |
 | Proposed API SLO (not achieved) | >=99.9% availability per month; p95 read <1.5 sec at agreed load |
-| Upstream timeout | 3 sec per HTTP request; serial ERP -> WMS -> TMS can exceed p95 target |
+| Upstream timeout | 3 sec per HTTP request; ERP read followed by concurrent WMS/TMS reads can still exceed p95 target |
 | Load-test stages | 10 -> 50 active VUs, sustained 5 min, gradual ramp-down |
 | Stretch test | 500 concurrent authenticated VUs, separately authorized; revise scaling from results |
 
-These are **planning parameters**, not evidence of capacity. The current order lookup executes three upstream calls in sequence. At high latency, external ERP/WMS/TMS connectors—not the ACA replica count—may be the primary bottleneck. Capture true upstream p95 latency, error rates, API limits and data freshness obligations before final sizing.
+These are **planning parameters**, not evidence of capacity. The current order lookup retrieves ERP first, then executes independent WMS and TMS reads concurrently. At high latency, external ERP/WMS/TMS connectors—not the ACA replica count—may be the primary bottleneck. Capture true upstream p95 latency, error rates, API limits and data freshness obligations before final sizing.
 
 Load profile: `load/azure-500-users.js`, using k6 with a valid sandbox Entra access token. Its threshold is <1% HTTP failures and p95 under 1500 ms; the script's 50-VU ramp validates a **500-person population assumption** and is not itself a 500-concurrent-user certification.
 
