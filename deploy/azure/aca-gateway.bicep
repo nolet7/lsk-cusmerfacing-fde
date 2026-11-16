@@ -101,8 +101,16 @@ resource gateway 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       secrets: [
-        { name: 'db-url', keyVaultUrl: databaseUrlSecretUri, identity: workloadIdentityId }
-        { name: 'connector-token', keyVaultUrl: connectorTokenSecretUri, identity: workloadIdentityId }
+        {
+  name: 'db-url'
+  keyVaultUrl: databaseUrlSecretUri
+  identity: workloadIdentityId
+}
+        {
+  name: 'connector-token'
+  keyVaultUrl: connectorTokenSecretUri
+  identity: workloadIdentityId
+}
       ]
       ingress: {
         external: true
@@ -116,30 +124,69 @@ resource gateway 'Microsoft.App/containerApps@2024-03-01' = {
         {
           name: 'gateway'
           image: gatewayImage
-          resources: { cpu: 1.0, memory: '2Gi' }
+          resources: {
+  cpu: 1.0
+  memory: '2Gi'
+}
           env: [
-            { name: 'FDE_ENV', value: 'production' }
-            { name: 'FDE_IDENTITY_MODE', value: 'entra' }
-            { name: 'FDE_CASE_STORE', value: 'postgres' }
-            { name: 'ENTRA_TENANT_ID', value: entraTenantId }
-            { name: 'ENTRA_API_AUDIENCE', value: entraAudience }
-            { name: 'ERP_BASE_URL', value: erpBaseUrl }
-            { name: 'WMS_BASE_URL', value: wmsBaseUrl }
-            { name: 'TMS_BASE_URL', value: tmsBaseUrl }
-            { name: 'DATABASE_URL', secretRef: 'db-url' }
-            { name: 'DEMO_CONNECTOR_TOKEN', secretRef: 'connector-token' }
+            {
+  name: 'FDE_ENV'
+  value: 'production'
+}
+            {
+  name: 'FDE_IDENTITY_MODE'
+  value: 'entra'
+}
+            {
+  name: 'FDE_CASE_STORE'
+  value: 'postgres'
+}
+            {
+  name: 'ENTRA_TENANT_ID'
+  value: entraTenantId
+}
+            {
+  name: 'ENTRA_API_AUDIENCE'
+  value: entraAudience
+}
+            {
+  name: 'ERP_BASE_URL'
+  value: erpBaseUrl
+}
+            {
+  name: 'WMS_BASE_URL'
+  value: wmsBaseUrl
+}
+            {
+  name: 'TMS_BASE_URL'
+  value: tmsBaseUrl
+}
+            {
+  name: 'DATABASE_URL'
+  secretRef: 'db-url'
+}
+            {
+  name: 'DEMO_CONNECTOR_TOKEN'
+  secretRef: 'connector-token'
+}
           ]
           probes: [
             {
               type: 'Liveness'
-              httpGet: { path: '/health', port: 18641 }
+              httpGet: {
+  path: '/health'
+  port: 18641
+}
               initialDelaySeconds: 15
               periodSeconds: 20
               failureThreshold: 3
             }
             {
               type: 'Readiness'
-              httpGet: { path: '/ready', port: 18641 }
+              httpGet: {
+  path: '/ready'
+  port: 18641
+}
               initialDelaySeconds: 5
               periodSeconds: 10
               failureThreshold: 3
