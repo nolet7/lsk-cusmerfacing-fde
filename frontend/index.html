@@ -14,6 +14,27 @@
 <button id="lookup-logistics" type="button">Look up order, inventory and shipment</button>
 <button id="lookup-exceptions" type="button">Investigate delivery exceptions</button>
 <pre id="logistics-result" role="status" aria-live="polite"></pre>
+
+<h3>Open investigation (manual action)</h3>
+<p>A delivery-risk order must exist before an investigation can be opened. No carrier, ERP or warehouse changes are made.</p>
+<label for="investigation-note">Investigation note</label>
+<textarea id="investigation-note" maxlength="1000">Review carrier weather disruption and notify account manager.</textarea>
+<button id="open-investigation" type="button">Open investigation case</button>
+<button id="list-investigations" type="button">Show open investigation history</button>
+<script>
+document.getElementById('open-investigation').addEventListener('click',async()=>{
+ const order_id=document.getElementById('sales-order').value.trim();
+ const note=document.getElementById('investigation-note').value.trim();
+ logisticsResult.textContent='Opening investigation...';
+ try {
+ const response=await fetch('/api/v2/logistics/investigations',{
+ method:'POST',headers:{'Content-Type':'application/json','X-Demo-Tenant':document.getElementById('tenant').value},
+ body:JSON.stringify({order_id,note})});
+ logisticsResult.textContent=JSON.stringify({http_status:response.status,...await response.json()},null,2);
+ }catch(err){logisticsResult.textContent='Error: '+String(err);}
+});
+document.getElementById('list-investigations').addEventListener('click',()=>logisticsFetch('/api/v2/logistics/investigations'));
+</script>
 </section>
 <script>
 const logisticsResult=document.getElementById('logistics-result');
@@ -28,10 +49,10 @@ async function logisticsFetch(path) {
   }
 }
 document.getElementById('lookup-logistics').addEventListener('click',()=>{
-  logisticsFetch('/api/v1/logistics/orders/'+encodeURIComponent(document.getElementById('sales-order').value.trim()));
+  logisticsFetch('/api/v2/logistics/orders/'+encodeURIComponent(document.getElementById('sales-order').value.trim()));
 });
 document.getElementById('lookup-exceptions').addEventListener('click',()=>{
-  logisticsFetch('/api/v1/logistics/exceptions');
+  logisticsFetch('/api/v2/logistics/exceptions');
 });
 </script>
 </body></html>

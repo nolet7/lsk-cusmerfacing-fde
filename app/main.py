@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from app.llm import answer as llm_answer
-from app import logistics
+from app import logistics, fde_integration
 from pydantic import BaseModel, Field
 
 DB = Path(os.getenv("DEMO_DB", "/tmp/lsk_aerospace_demo.sqlite3"))
@@ -40,6 +40,7 @@ def initialize():
 def startup():
     initialize()
     logistics.initialize(connect)
+    fde_integration.initialize(connect)
 
 class Inquiry(BaseModel):
     order_id: str = Field(min_length=3,max_length=64)
@@ -111,3 +112,6 @@ def cases(x_demo_tenant:str | None=Header(default=None)):
 # Logistics endpoints share the existing synthetic database and demo-only tenant scope.
 logistics.configure(connect,tenant)
 app.include_router(logistics.router)
+
+fde_integration.configure(connect,tenant)
+app.include_router(fde_integration.router)

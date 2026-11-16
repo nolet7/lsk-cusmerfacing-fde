@@ -5,7 +5,18 @@ services:
       - "127.0.0.1:18641:18641"
     environment:
       DEMO_DB: /tmp/lsk_aerospace_demo.sqlite3
+      ERP_BASE_URL: http://erp:8000
+      WMS_BASE_URL: http://wms:8000
+      TMS_BASE_URL: http://tms:8000
+      DEMO_CONNECTOR_TOKEN: ${DEMO_CONNECTOR_TOKEN:-local-synthetic-demo-token}
       # Set OPENAI_API_KEY only after enterprise approval; do not commit credentials
+    depends_on:
+      erp:
+        condition: service_healthy
+      wms:
+        condition: service_healthy
+      tms:
+        condition: service_healthy
     read_only: true
     tmpfs:
       - /tmp:size=32m,mode=1777
@@ -18,3 +29,46 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  erp:
+    build: ..
+    command: ["uvicorn","services.mock_system:app","--host","0.0.0.0","--port","8000"]
+    environment:
+      SYSTEM_ROLE: erp
+      DEMO_CONNECTOR_TOKEN: ${DEMO_CONNECTOR_TOKEN:-local-synthetic-demo-token}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3)"]
+      interval: 10s
+      timeout: 4s
+      retries: 5
+  wms:
+    build: ..
+    command: ["uvicorn","services.mock_system:app","--host","0.0.0.0","--port","8000"]
+    environment:
+      SYSTEM_ROLE: wms
+      DEMO_CONNECTOR_TOKEN: ${DEMO_CONNECTOR_TOKEN:-local-synthetic-demo-token}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3)"]
+      interval: 10s
+      timeout: 4s
+      retries: 5
+  tms:
+    build: ..
+    command: ["uvicorn","services.mock_system:app","--host","0.0.0.0","--port","8000"]
+    environment:
+      SYSTEM_ROLE: tms
+      DEMO_CONNECTOR_TOKEN: ${DEMO_CONNECTOR_TOKEN:-local-synthetic-demo-token}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3)"]
+      interval: 10s
+      timeout: 4s
+      retries: 5
