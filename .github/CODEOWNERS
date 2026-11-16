@@ -1,0 +1,5 @@
+# Replace placeholders with actual GitHub teams after organization ownership is established.
+# /app/ @YOUR-ORG/platform-owners @YOUR-ORG/security-reviewers
+# /deploy/azure/ @YOUR-ORG/cloud-platform @YOUR-ORG/security-reviewers
+# /migrations/ @YOUR-ORG/database-owners
+# /.github/workflows/ @YOUR-ORG/platform-owners
