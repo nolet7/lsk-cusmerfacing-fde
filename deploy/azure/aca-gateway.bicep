@@ -139,7 +139,7 @@ resource gateway 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               type: 'Readiness'
-              httpGet: { path: '/health', port: 18641 }
+              httpGet: { path: '/ready', port: 18641 }
               initialDelaySeconds: 5
               periodSeconds: 10
               failureThreshold: 3
