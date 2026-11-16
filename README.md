@@ -226,7 +226,7 @@ The `feature/azure-enterprise-500-users` branch is the **Azure enterprise engine
 ### Deployment architecture
 
 - **Compute:** Azure Container Apps gateway with minimum 2 and maximum 12 replicas and HTTP-concurrency autoscaling.
-- **Identity:** Microsoft Entra protected API access-token validation, `Logistics.Read` application role, and explicitly issued, verified `customer_tenant_id` claim. Browser-supplied demo tenant headers are **blocked** in deployed mode.
+- **Identity:** Microsoft Entra protected API access-token validation, `Logistics.Read` and `Logistics.Write` application roles, and explicitly issued, verified `customer_tenant_id` claim. Browser-supplied demo tenant headers are **blocked** in deployed mode.
 - **Data:** Azure Database for PostgreSQL Flexible Server using private VNet integration, a reviewed migration, and a bounded per-replica connection pool. Demo SQLite cases are forbidden in deployed mode.
 - **Security:** Azure Key Vault secret references and a user-assigned managed identity; Container Registry access through Azure role assignment. Entra-aware enterprise frontend, perimeter restrictions, and real integration credentials still need customer setup.
 - **Platform:** Bicep for networking, private Postgres, ACR, Key Vault, managed identity, Log Analytics and the Azure Container Apps gateway.
