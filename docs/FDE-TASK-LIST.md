@@ -20,7 +20,7 @@ This backlog applies to the Azure enterprise branch. **Implemented** means sourc
 | FDE-014 | POC | Run Docker Compose end-to-end smoke and outage tests | FDE + QA | P0 | Pending execution | CI log / evidence |
 | FDE-015 | POC | Customer demo and acceptance signoff | FDE + customer lead | P0 | Pending | UAT record |
 | FDE-016 | Pilot | Implement configurable real ERP/WMS/TMS adapters and approved credentials | FDE + source owners | P0 | Not started | Integration contract test and sandbox evidence |
-| FDE-017 | Pilot | Validate Entra access tokens and enforce real user-to-customer authorization and RBAC/ABAC | Security + FDE | P0 | Partial: JWT/role and claim validator committed; app registration, claim issuance, user-level enforcement and UAT pending | Security and authorization negative tests |
+| FDE-017 | Pilot | Validate Entra access tokens and enforce real user-to-customer authorization and RBAC/ABAC | Security + FDE | P0 | Partial: JWT read/write roles and claim validator committed; app registration, claim issuance, user-level enforcement and UAT pending | Security and authorization negative tests |
 | FDE-018 | Pilot | Implement Postgres migrations, investigation audit, idempotency and case ownership | Backend | P0 | Partial: Postgres case store, migration and bounded connection pool; audit/idempotency/ownership pending | Private Postgres integration and audit checks |
 | FDE-019 | Pilot | Add data freshness, partial response semantics and reconciler | Integration lead | P0 | Not started | Stale-source and outage test scenarios |
 | FDE-020 | Pilot | SLO telemetry: traces, RED metrics, source-level errors and latency | SRE | P1 | Not started | Dashboard and alert tests |
