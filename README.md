@@ -232,6 +232,8 @@ The `feature/azure-enterprise-500-users` branch is the **Azure enterprise engine
 - **Platform:** Bicep for networking, private Postgres, ACR, Key Vault, managed identity, Log Analytics and the Azure Container Apps gateway.
 - **Testing:** Azure Bicep build, Python regression and security checks, and a k6 workload profile for **500 named users / 50 concurrent active users** as an initial capacity hypothesis.
 
+The enterprise exception-list API is intentionally blocked with HTTP 503 until an indexed, paginated exception read model is added; the current demo N+1 source scan is not safe for production-scale traffic.
+
 The 500-user design is **not yet load-tested or certified**. The current gateway uses synthetic upstream connectors and still requires real ERP/WMS/TMS adapters, a corporate Entra-aware frontend, private network and WAF controls, audited multitenancy, real Azure validation, customer acceptance and production governance. The release gate is explicitly blocked until those requirements are met.
 
 ### Azure source files
