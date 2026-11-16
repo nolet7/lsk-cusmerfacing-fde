@@ -11,7 +11,7 @@ def list_exceptions(tenant_id: str, limit: int, offset: int):
     if not 60 <= max_age <= 86400:
         raise HTTPException(503,"Invalid freshness policy")
     with _postgres() as db:
-        row=db.execute("SELECT MAX(refreshed_at) AS last_refresh FROM delivery_exceptions WHERE tenant_id=%s",(tenant_id,)).fetchone()
+        row=db.execute("SELECT refreshed_at AS last_refresh FROM exception_refresh_state WHERE tenant_id=%s",(tenant_id,)).fetchone()
         last=row["last_refresh"] if row else None
         if last is None:
             raise HTTPException(503,"Exception index has not been populated")
