@@ -4,11 +4,14 @@ Demo-only identity uses the pre-existing X-Demo-Tenant header. Replace with ente
 OIDC and per-user policy enforcement before any real tenant or customer use.
 """
 import os
+import asyncio
 import sqlite3
 from datetime import date
 from urllib.parse import quote
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
+from app.identity import authorized_tenant, authorized_write_tenant
+from app import case_store, exception_store
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v2/logistics", tags=["fde-integration"])
@@ -38,7 +41,10 @@ def initialize(connect):
 def config():
     values = {n:os.getenv(n) for n in ("ERP_BASE_URL","WMS_BASE_URL","TMS_BASE_URL","DEMO_CONNECTOR_TOKEN")}
     if any(not v for v in values.values()):
-        raise HTTPException(503, "Upstream simulator integration is not configured")
+        raise HTTPException(503, "Upstream integration is not configured")
+    if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
+        if any(not values[name].startswith("https://") for name in ("ERP_BASE_URL","WMS_BASE_URL","TMS_BASE_URL")):
+            raise HTTPException(503,"Enterprise upstream connectors must use HTTPS")
     return values
 
 async def source(client, base, path, params, token):
@@ -79,30 +85,40 @@ async def snapshot(client, cfg, tenant_id, order_id):
                          {"tenant_id":tenant_id},cfg["DEMO_CONNECTOR_TOKEN"])
     if order is None:
         raise HTTPException(404,"Order not found")
-    stock = await source(client,cfg["WMS_BASE_URL"],"/v1/inventory",
-                         {"tenant_id":tenant_id,"warehouse_id":order["warehouse_id"],"sku":order["sku"]},
-                         cfg["DEMO_CONNECTOR_TOKEN"])
-    shipment = await source(client,cfg["TMS_BASE_URL"],"/v1/shipments/"+quote(order["shipment_id"],safe=""),
-                            {"tenant_id":tenant_id,"order_id":order_id},cfg["DEMO_CONNECTOR_TOKEN"])
+    # Both downstream requests depend on ERP's identifiers, but not on each other.
+    # Concurrent reads reduce critical-path latency. Any upstream failure still
+    # fails the snapshot closed; no invented shipment/stock records are returned.
+    stock, shipment = await asyncio.gather(
+        source(client,cfg["WMS_BASE_URL"],"/v1/inventory",
+               {"tenant_id":tenant_id,"warehouse_id":order["warehouse_id"],"sku":order["sku"]},
+               cfg["DEMO_CONNECTOR_TOKEN"]),
+        source(client,cfg["TMS_BASE_URL"],"/v1/shipments/"+quote(order["shipment_id"],safe=""),
+               {"tenant_id":tenant_id,"order_id":order_id},cfg["DEMO_CONNECTOR_TOKEN"]),
+    )
     stock_items = stock.get("items",[]) if stock else []
     inventory = stock_items[0] if stock_items else None
     if inventory is not None:
         inventory = {**inventory,"available":max(inventory["on_hand"]-inventory["reserved"],0)}
     return {"order":order,"inventory":inventory,"shipment":shipment,
             "late_delivery":assess(order,shipment),
-            "sources":{"erp":"HTTP ERP simulator","wms":"HTTP WMS simulator","tms":"HTTP TMS simulator"},
-            "as_of_date":date.today().isoformat(),"data_mode":"synthetic-http-integration"}
+            "sources":{"erp":"Configured ERP HTTP source","wms":"Configured WMS HTTP source","tms":"Configured TMS HTTP source"},
+            "as_of_date":date.today().isoformat(),
+            "data_mode":"synthetic-http-integration" if os.getenv("FDE_ENV","local") in ("local","test") else "configured-external-connectors"}
 
 @router.get("/orders/{order_id}")
-async def unified_order(order_id:str,x_demo_tenant:str|None=Header(default=None)):
-    tenant_id = _tenant(x_demo_tenant)
+async def unified_order(order_id:str,tenant_id: str = Depends(authorized_tenant)):
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         return await snapshot(client,cfg,tenant_id,order_id)
 
 @router.get("/exceptions")
-async def exceptions(x_demo_tenant:str|None=Header(default=None)):
-    tenant_id = _tenant(x_demo_tenant)
+async def exceptions(tenant_id: str = Depends(authorized_tenant),
+                     limit: int = Query(default=50,ge=1,le=100),
+                     offset: int = Query(default=0,ge=0,le=100000)):
+    # Demo list performs N+1 source calls. Prevent unbounded enterprise fan-out
+    # until a paginated, freshness-aware indexed exception read model is in place.
+    if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
+        return exception_store.list_exceptions(tenant_id,limit=limit,offset=offset)
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         listing=await source(client,cfg["ERP_BASE_URL"],"/v1/orders",
@@ -115,36 +131,24 @@ async def exceptions(x_demo_tenant:str|None=Header(default=None)):
             result=await snapshot(client,cfg,tenant_id,order["order_id"])
             if result["late_delivery"]["is_late_or_at_risk"]:
                 items.append(result)
-        return {"count":len(items),"items":items,"data_mode":"synthetic-http-integration"}
+        return {"count":len(items),"items":items,"data_mode":"synthetic-http-integration" if os.getenv("FDE_ENV","local") in ("local","test") else "configured-external-connectors"}
 
 class InvestigationRequest(BaseModel):
     order_id:str=Field(min_length=3,max_length=64)
     note:str=Field(min_length=3,max_length=1000)
 
 @router.post("/investigations",status_code=201)
-async def open_investigation(body:InvestigationRequest,x_demo_tenant:str|None=Header(default=None)):
-    tenant_id=_tenant(x_demo_tenant)
+async def open_investigation(body:InvestigationRequest,tenant_id: str = Depends(authorized_write_tenant)):
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         result=await snapshot(client,cfg,tenant_id,body.order_id)
     reason=result["late_delivery"]["reason_code"]
     if not reason:
         raise HTTPException(409,"Order has no detected delivery exception")
-    with _connect() as db:
-        cursor=db.execute(
-            "INSERT INTO investigations(tenant_id,order_id,reason_code,note) VALUES (?,?,?,?)",
-            (tenant_id,body.order_id,reason,body.note)
-        )
-        investigation_id=cursor.lastrowid
+    investigation_id=case_store.create_investigation(tenant_id,body.order_id,reason,body.note,_connect)
     return {"investigation_id":investigation_id,"order_id":body.order_id,
-            "reason_code":reason,"status":"OPEN","data_mode":"synthetic"}
+            "reason_code":reason,"status":"OPEN","data_mode":"synthetic" if os.getenv("FDE_ENV","local") in ("local","test") else "enterprise-case-store"}
 
 @router.get("/investigations")
-def list_investigations(x_demo_tenant:str|None=Header(default=None)):
-    tenant_id=_tenant(x_demo_tenant)
-    with _connect() as db:
-        rows=db.execute(
-            "SELECT investigation_id,order_id,reason_code,note,status,created_at FROM investigations WHERE tenant_id=? ORDER BY investigation_id DESC LIMIT 100",
-            (tenant_id,)
-        ).fetchall()
-    return {"items":[dict(row) for row in rows],"data_mode":"synthetic"}
+def list_investigations(tenant_id: str = Depends(authorized_tenant)):
+    return {"items":case_store.list_investigations(tenant_id,_connect),"data_mode":"synthetic" if os.getenv("FDE_ENV","local") in ("local","test") else "enterprise-case-store"}

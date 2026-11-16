@@ -1,0 +1,51 @@
+name: Azure enterprise validation
+on:
+  pull_request:
+  push:
+    branches: [feature/azure-enterprise-500-users]
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: python -m compileall -q app services scripts
+  bicep-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Azure CLI / Bicep and compile templates
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az bicep install
+            az bicep build --file deploy/azure/foundation.bicep
+            az bicep build --file deploy/azure/aca-gateway.bicep
+            az bicep build --file deploy/azure/exception-refresh-job.bicep
+
+  enterprise-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build Entra SPA with nonsecret placeholder IDs
+        working-directory: enterprise-ui
+        env:
+          VITE_ENTRA_TENANT_ID: 00000000-0000-0000-0000-000000000001
+          VITE_ENTRA_SPA_CLIENT_ID: 00000000-0000-0000-0000-000000000002
+          VITE_ENTRA_API_SCOPE: api://test/Logistics.Access
+        run: |
+          npm install --no-audit --no-fund
+          npm run build

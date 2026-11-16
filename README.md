@@ -216,3 +216,59 @@ architecture/
 The current state is a **reproducible FDE POC**, not an enterprise production platform. Before claiming deployment to a multinational customer: integrate approved real ERP/WMS/TMS sandboxes; implement actual OIDC/SSO and granular access; rotate secrets in a manager; add production-managed databases, audit and case ownership; enforce allowlisted egress and circuit breakers; verify upstream failure, data freshness and reconciliation; deploy IaC to controlled environments; validate observability, SLOs, security, backup restoration, rollback and signed UAT.
 
 **Resume alignment (simulation):** Developed a customer-facing FastAPI POC that connects independently running simulated ERP, warehouse and transportation services over HTTP, giving logistics users unified order, inventory and shipment visibility and a manual delayed-delivery investigation workflow. **Do not claim it is a live enterprise integration or measured customer impact until that work has been performed and evidenced.**
+
+## Azure enterprise deployment target — 500 named users
+
+The `feature/azure-enterprise-500-users` branch is the **Azure enterprise engineering track** for the existing FDE customer scenario, preserving the functioning local synthetic integration POC while adding Azure deployment artifacts, runtime authorization requirements and shared case persistence.
+
+**Start here:** [Azure 500-user architecture, step-by-step deployment and verification gates](docs/AZURE-ENTERPRISE-500-USERS.md).
+
+### Deployment architecture
+
+- **Compute:** Azure Container Apps gateway with minimum 2 and maximum 12 replicas and HTTP-concurrency autoscaling.
+- **Identity:** Microsoft Entra protected API access-token validation, `Logistics.Read` and `Logistics.Write` application roles, and explicitly issued, verified `customer_tenant_id` claim. Browser-supplied demo tenant headers are **blocked** in deployed mode.
+- **Data:** Azure Database for PostgreSQL Flexible Server using private VNet integration, a reviewed migration, and a bounded per-replica connection pool. Demo SQLite cases are forbidden in deployed mode.
+- **Security:** Azure Key Vault secret references and a user-assigned managed identity; Container Registry access through Azure role assignment. Entra-aware enterprise frontend, perimeter restrictions, and real integration credentials still need customer setup.
+- **Platform:** Bicep for networking, private Postgres, ACR, Key Vault, managed identity, Log Analytics and the Azure Container Apps gateway.
+- **Testing:** Azure Bicep build, Python regression and security checks, and a k6 workload profile for **500 named users / 50 concurrent active users** as an initial capacity hypothesis.
+
+The enterprise exception-list API is intentionally blocked with HTTP 503 until an indexed, paginated exception read model is added; the current demo N+1 source scan is not safe for production-scale traffic.
+
+The 500-user design is **not yet load-tested or certified**. The current gateway uses synthetic upstream connectors and still requires real ERP/WMS/TMS adapters, a corporate Entra-aware frontend, private network and WAF controls, audited multitenancy, real Azure validation, customer acceptance and production governance. The release gate is explicitly blocked until those requirements are met.
+
+### Azure source files
+
+- [Foundation Bicep](deploy/azure/foundation.bicep)
+- [Azure Container Apps Bicep](deploy/azure/aca-gateway.bicep)
+- [Enterprise authentication](app/identity.py)
+- [PostgreSQL case store](app/case_store.py)
+- [Database migration](migrations/001_investigations.sql)
+- [500-user capacity scenario](load/azure-500-users.js)
+- [Azure deployment guide](docs/AZURE-ENTERPRISE-500-USERS.md)
+
+The original local development workflow remains available via `docker compose -f deploy/compose.yaml up --build -d --wait`.
+
+## Enterprise completion pack (Azure reference branch)
+
+All major remaining enterprise **file sets** have now been added to this branch. Start with the [operations deliverable index](docs/OPERATIONS-DELIVERABLES.md) and [implementation status ledger](docs/IMPLEMENTATION-STATUS.md). This is a file and implementation coverage milestone, **not an assertion that a customer's Azure production platform is already deployed.**
+
+### New end-to-end deliverables
+
+- **Enterprise user entry point:** [Microsoft Entra MSAL SPA](enterprise-ui/README.md), using API access tokens, no demo tenant header, and read/write permissions enforced by the gateway. Client app registrations, trusted customer claim issuance, live sign-in tests, static hosting and approved same-origin routing are required.
+- **Scalable exception lookup:** [indexed PostgreSQL read model](app/exception_store.py), [migration](migrations/002_delivery_exceptions.sql), [scheduled refresh script](scripts/refresh_exceptions.py) and [Azure Container Apps job Bicep](deploy/azure/exception-refresh-job.bicep). The enterprise API no longer performs the demo N+1 exception fan-out. Scheduled job execution and source credentials remain unverified.
+- **Release lifecycle:** [Azure validation CI](.github/workflows/azure-validation.yml), [approval-gated validation-only release workflow](.github/workflows/azure-release.yml), and [release evidence gates](docs/RELEASE-GATES.md).
+- **Operational controls:** [network hardening](docs/NETWORK-SECURITY.md), [security threat model](docs/SECURITY-THREAT-MODEL.md), [database operations](docs/DB-OPERATIONS.md), [SLO plan](docs/OBSERVABILITY-SLOS.md), [incident recovery runbook](docs/RUNBOOK-INCIDENT-RECOVERY.md), and [customer discovery/UAT checklist](docs/CUSTOMER-DISCOVERY-UAT.md).
+- **Architecture drawing:** [Azure 500-user architecture](architecture/azure-enterprise-500.mmd).
+- **Testing:** [enterprise API tests](tests/test_enterprise_routes.py), [identity tests](tests/test_azure_security.py), [indexed read-model tests](tests/test_exception_store.py), and the existing [500-user population load-test profile](load/azure-500-users.js).
+
+### Production blockers that files alone cannot resolve
+
+1. Actual Azure subscription, identity and private corporate network configuration.
+2. Real customer ERP/WMS/TMS API contracts and access, replacing synthetic service credentials.
+3. Real Entra application registrations, custom customer-tenant claim validation, enterprise SPA hosting and UAT.
+4. Audited PostgreSQL migrations, least-privilege DB roles, tenant RLS policy and production retention/restore evidence.
+5. Fully provisioned Front Door Premium/private endpoint/WAF configuration, outbound restrictions, monitoring/alerting and secret rotation.
+6. Measured representative 50-active-user and 500-concurrent-user tests; source rate limits, load tuning, failover/rollback.
+7. Change-board, security, SRE and customer signoff.
+
+**Current go-live decision: NO-GO** until these external implementation and validation gates pass.

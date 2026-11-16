@@ -1,0 +1,67 @@
+name: Azure release candidate (approval-gated)
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'GitHub environment with approvals and Azure OIDC configuration'
+        required: true
+        type: choice
+        options: [sandbox, pilot, production]
+      image_digest:
+        description: 'Approved immutable sha256 manifest digest (64 lowercase hex)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: azure-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: python -m compileall -q app scripts
+      - name: Validate immutable digest
+        shell: bash
+        env:
+          DIGEST: ${{ inputs.image_digest }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "Invalid digest"; exit 1; }
+  release:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Validate referenced image and Bicep
+        shell: bash
+        env:
+          ACR: ${{ vars.ACR_LOGIN_SERVER }}
+          DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          test -n "$ACR"
+          az bicep build --file deploy/azure/aca-gateway.bicep
+          az bicep build --file deploy/azure/exception-refresh-job.bicep
+          echo "Validated release candidate: ${ACR}/lsk-fde-gateway@${DIGEST}"
+      - name: Required approval evidence / ARM what-if
+        run: |
+          echo "This workflow deliberately does NOT deploy until customer-specific"
+          echo "private networking, approved identity mapping, image signing, migration"
+          echo "and environment parameterization are supplied."
+          echo "See docs/RELEASE-GATES.md. No deployment performed."

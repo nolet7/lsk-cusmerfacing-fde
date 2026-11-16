@@ -1,0 +1,32 @@
+flowchart TB
+  Users["Up to 500 named enterprise users"]
+  Entra["Microsoft Entra ID | JWT roles and verified customer claim"]
+  FrontDoor["Azure Front Door Premium + WAF | PLANNED"]
+  SPA["Enterprise MSAL SPA | Buildable, unhosted"]
+  API["Azure Container Apps FastAPI | 2..12 replicas target"]
+  ERP["Approved ERP REST API | NOT CONFIGURED"]
+  WMS["Approved WMS REST API | NOT CONFIGURED"]
+  TMS["Approved TMS REST API | NOT CONFIGURED"]
+  PG[("Azure PostgreSQL | Bicep + migrations")]
+  JOB["Scheduled exception index refresh | Bicep"]
+  KV["Key Vault + Workload Identity"]
+  ACR["Azure Container Registry"]
+  MON["Azure Monitor / Log Analytics"]
+
+  Users --> SPA
+  SPA --> Entra
+  SPA --> FrontDoor
+  FrontDoor --> API
+  API --> ERP
+  API --> WMS
+  API --> TMS
+  API --> PG
+  JOB --> ERP
+  JOB --> WMS
+  JOB --> TMS
+  JOB --> PG
+  KV --> API
+  KV --> JOB
+  ACR --> API
+  API --> MON
+  JOB --> MON

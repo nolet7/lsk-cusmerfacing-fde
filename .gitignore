@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.sqlite3
+# Node / Vite
+node_modules/
+dist/
+enterprise-ui/node_modules/
+enterprise-ui/dist/
+# Credentials and environment-specific files
+.env
+.env.*
+!.env.example
+!enterprise-ui/.env.example
+*.pem
+*.pfx
+*.key
+*.tfstate
+*.tfstate.*
+# Azure and tool-generated outputs
+*.bicep.json
+*.parameters.local.json
+.azure/

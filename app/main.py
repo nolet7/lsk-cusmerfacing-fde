@@ -3,7 +3,7 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from app.llm import answer as llm_answer
 from app import logistics, fde_integration
@@ -38,9 +38,18 @@ def initialize():
 
 @app.on_event("startup")
 def startup():
-    initialize()
-    logistics.initialize(connect)
-    fde_integration.initialize(connect)
+    if os.getenv('FDE_ENV','local').lower() not in ('local','test'):
+        if os.getenv('FDE_IDENTITY_MODE') != 'entra' or os.getenv('FDE_CASE_STORE') != 'postgres':
+            raise RuntimeError('Deployed environments require Entra identity and PostgreSQL case store')
+        if not os.getenv('ENTRA_TENANT_ID') or not os.getenv('ENTRA_API_AUDIENCE') or not os.getenv('DATABASE_URL'):
+            raise RuntimeError('Missing enterprise identity/database configuration')
+    if os.getenv("FDE_ENV","local").lower() in ("local","test"):
+        initialize()
+        logistics.initialize(connect)
+        fde_integration.initialize(connect)
+    else:
+        # Never create synthetic SQLite data or customer demo records in Azure.
+        fde_integration.configure(connect, tenant)
 
 class Inquiry(BaseModel):
     order_id: str = Field(min_length=3,max_length=64)
@@ -65,7 +74,7 @@ def portal():
 
 @app.get("/health")
 def health():
-    return {"status":"ok","mode":"synthetic-demo"}
+    return {"status":"ok","mode":"synthetic-demo" if os.getenv("FDE_ENV","local").lower() in ("local","test") else "enterprise-gateway"}
 
 @app.get("/api/v1/orders/{order_id}")
 def get_order(order_id:str, x_demo_tenant: str | None = Header(default=None)):
@@ -115,3 +124,30 @@ app.include_router(logistics.router)
 
 fde_integration.configure(connect,tenant)
 app.include_router(fde_integration.router)
+
+@app.middleware("http")
+async def deny_legacy_in_enterprise(request: Request, call_next):
+    if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
+        if request.url.path == "/" or request.url.path.startswith("/api/v1/"):
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=404,content={"detail":"Demo UI and v1 routes disabled in enterprise mode"})
+    return await call_next(request)
+
+@app.get("/ready")
+def readiness():
+    """Enterprise readiness checks case database, not just FastAPI process lifetime."""
+    if os.getenv("FDE_ENV","local").lower() in ("local","test"):
+        return {"status":"ready","mode":"synthetic-local"}
+    from app.case_store import _postgres
+    try:
+        with _postgres() as db:
+            row=db.execute("""SELECT
+                to_regclass('public.investigations') IS NOT NULL AS cases_ready,
+                to_regclass('public.delivery_exceptions') IS NOT NULL AS exceptions_ready,
+                to_regclass('public.exception_refresh_state') IS NOT NULL AS refresh_ready
+                """).fetchone()
+            if not row or not all(row.values()):
+                raise RuntimeError("Database migration missing")
+    except Exception:
+        raise HTTPException(503,"Case database unavailable") from None
+    return {"status":"ready","mode":"enterprise-gateway"}
