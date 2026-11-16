@@ -4,6 +4,7 @@ Demo-only identity uses the pre-existing X-Demo-Tenant header. Replace with ente
 OIDC and per-user policy enforcement before any real tenant or customer use.
 """
 import os
+import asyncio
 import sqlite3
 from datetime import date
 from urllib.parse import quote
@@ -81,11 +82,16 @@ async def snapshot(client, cfg, tenant_id, order_id):
                          {"tenant_id":tenant_id},cfg["DEMO_CONNECTOR_TOKEN"])
     if order is None:
         raise HTTPException(404,"Order not found")
-    stock = await source(client,cfg["WMS_BASE_URL"],"/v1/inventory",
-                         {"tenant_id":tenant_id,"warehouse_id":order["warehouse_id"],"sku":order["sku"]},
-                         cfg["DEMO_CONNECTOR_TOKEN"])
-    shipment = await source(client,cfg["TMS_BASE_URL"],"/v1/shipments/"+quote(order["shipment_id"],safe=""),
-                            {"tenant_id":tenant_id,"order_id":order_id},cfg["DEMO_CONNECTOR_TOKEN"])
+    # Both downstream requests depend on ERP's identifiers, but not on each other.
+    # Concurrent reads reduce critical-path latency. Any upstream failure still
+    # fails the snapshot closed; no invented shipment/stock records are returned.
+    stock, shipment = await asyncio.gather(
+        source(client,cfg["WMS_BASE_URL"],"/v1/inventory",
+               {"tenant_id":tenant_id,"warehouse_id":order["warehouse_id"],"sku":order["sku"]},
+               cfg["DEMO_CONNECTOR_TOKEN"]),
+        source(client,cfg["TMS_BASE_URL"],"/v1/shipments/"+quote(order["shipment_id"],safe=""),
+               {"tenant_id":tenant_id,"order_id":order_id},cfg["DEMO_CONNECTOR_TOKEN"]),
+    )
     stock_items = stock.get("items",[]) if stock else []
     inventory = stock_items[0] if stock_items else None
     if inventory is not None:
