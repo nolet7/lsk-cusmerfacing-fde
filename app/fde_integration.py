@@ -9,9 +9,9 @@ import sqlite3
 from datetime import date
 from urllib.parse import quote
 import httpx
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from app.identity import authorized_tenant, authorized_write_tenant
-from app import case_store
+from app import case_store, exception_store
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v2/logistics", tags=["fde-integration"])
@@ -113,7 +113,7 @@ async def exceptions(tenant_id: str = Depends(authorized_tenant)):
     # Demo list performs N+1 source calls. Prevent unbounded enterprise fan-out
     # until a paginated, freshness-aware indexed exception read model is in place.
     if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
-        raise HTTPException(503,"Enterprise exception feed requires approved indexed read model")
+        return exception_store.list_exceptions(tenant_id,limit=50,offset=0)
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         listing=await source(client,cfg["ERP_BASE_URL"],"/v1/orders",
