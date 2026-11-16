@@ -34,3 +34,20 @@ def test_demo_mode_forbidden_outside_local(monkeypatch):
     with pytest.raises(RuntimeError, match="Deployed environments require"):
         with TestClient(app):
             pass
+
+def test_read_role_cannot_create_investigation(monkeypatch):
+    from unittest.mock import patch, MagicMock
+    from fastapi import HTTPException
+    from app.identity import _resolve_tenant
+    monkeypatch.setenv("FDE_ENV","production")
+    monkeypatch.setenv("FDE_IDENTITY_MODE","entra")
+    monkeypatch.setenv("ENTRA_TENANT_ID","00000000-0000-0000-0000-000000000001")
+    monkeypatch.setenv("ENTRA_API_AUDIENCE","api://lsk-logistics")
+    read_claims={"tid":"00000000-0000-0000-0000-000000000001",
+                 "roles":["Logistics.Read"],"customer_tenant_id":"acme-air"}
+    with patch("app.identity.jwks_client") as jwks, patch("app.identity.jwt.decode",return_value=read_claims):
+        jwks.return_value.get_signing_key_from_jwt.return_value.key="mock-key"
+        assert _resolve_tenant(None,"Bearer test-token","Logistics.Read")=="acme-air"
+        with pytest.raises(HTTPException) as exc:
+            _resolve_tenant(None,"Bearer test-token","Logistics.Write")
+        assert exc.value.status_code==403
