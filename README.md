@@ -247,3 +247,28 @@ The 500-user design is **not yet load-tested or certified**. The current gateway
 - [Azure deployment guide](docs/AZURE-ENTERPRISE-500-USERS.md)
 
 The original local development workflow remains available via `docker compose -f deploy/compose.yaml up --build -d --wait`.
+
+## Enterprise completion pack (Azure reference branch)
+
+All major remaining enterprise **file sets** have now been added to this branch. Start with the [operations deliverable index](docs/OPERATIONS-DELIVERABLES.md) and [implementation status ledger](docs/IMPLEMENTATION-STATUS.md). This is a file and implementation coverage milestone, **not an assertion that a customer's Azure production platform is already deployed.**
+
+### New end-to-end deliverables
+
+- **Enterprise user entry point:** [Microsoft Entra MSAL SPA](enterprise-ui/README.md), using API access tokens, no demo tenant header, and read/write permissions enforced by the gateway. Client app registrations, trusted customer claim issuance, live sign-in tests, static hosting and approved same-origin routing are required.
+- **Scalable exception lookup:** [indexed PostgreSQL read model](app/exception_store.py), [migration](migrations/002_delivery_exceptions.sql), [scheduled refresh script](scripts/refresh_exceptions.py) and [Azure Container Apps job Bicep](deploy/azure/exception-refresh-job.bicep). The enterprise API no longer performs the demo N+1 exception fan-out. Scheduled job execution and source credentials remain unverified.
+- **Release lifecycle:** [Azure validation CI](.github/workflows/azure-validation.yml), [approval-gated validation-only release workflow](.github/workflows/azure-release.yml), and [release evidence gates](docs/RELEASE-GATES.md).
+- **Operational controls:** [network hardening](docs/NETWORK-SECURITY.md), [security threat model](docs/SECURITY-THREAT-MODEL.md), [database operations](docs/DB-OPERATIONS.md), [SLO plan](docs/OBSERVABILITY-SLOS.md), [incident recovery runbook](docs/RUNBOOK-INCIDENT-RECOVERY.md), and [customer discovery/UAT checklist](docs/CUSTOMER-DISCOVERY-UAT.md).
+- **Architecture drawing:** [Azure 500-user architecture](architecture/azure-enterprise-500.mmd).
+- **Testing:** [enterprise API tests](tests/test_enterprise_routes.py), [identity tests](tests/test_azure_security.py), [indexed read-model tests](tests/test_exception_store.py), and the existing [500-user population load-test profile](load/azure-500-users.js).
+
+### Production blockers that files alone cannot resolve
+
+1. Actual Azure subscription, identity and private corporate network configuration.
+2. Real customer ERP/WMS/TMS API contracts and access, replacing synthetic service credentials.
+3. Real Entra application registrations, custom customer-tenant claim validation, enterprise SPA hosting and UAT.
+4. Audited PostgreSQL migrations, least-privilege DB roles, tenant RLS policy and production retention/restore evidence.
+5. Fully provisioned Front Door Premium/private endpoint/WAF configuration, outbound restrictions, monitoring/alerting and secret rotation.
+6. Measured representative 50-active-user and 500-concurrent-user tests; source rate limits, load tuning, failover/rollback.
+7. Change-board, security, SRE and customer signoff.
+
+**Current go-live decision: NO-GO** until these external implementation and validation gates pass.
