@@ -5,4 +5,33 @@
 <label>Work order</label><input id="order" value="WO-1001">
 <label>Question</label><textarea id="question">What is the service status and shipping progress?</textarea>
 <button onclick="ask()">Prepare customer response</button><pre id="result" role="status"></pre>
-<script>async function ask(){const res=await fetch('/api/v1/inquiries',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Tenant':document.getElementById('tenant').value},body:JSON.stringify({order_id:document.getElementById('order').value,question:document.getElementById('question').value})});document.getElementById('result').textContent=JSON.stringify(await res.json(),null,2)}</script></body></html>
+<script>async function ask(){const res=await fetch('/api/v1/inquiries',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Tenant':document.getElementById('tenant').value},body:JSON.stringify({order_id:document.getElementById('order').value,question:document.getElementById('question').value})});document.getElementById('result').textContent=JSON.stringify(await res.json(),null,2)}</script>
+<hr>
+<section aria-labelledby="logistics-heading">
+<h2 id="logistics-heading">Unified logistics visibility</h2>
+<p>Synthetic ERP + warehouse + transportation demonstration. Read-only.</p>
+<label for="sales-order">Sales order</label><input id="sales-order" value="SO-1001" maxlength="64">
+<button id="lookup-logistics" type="button">Look up order, inventory and shipment</button>
+<button id="lookup-exceptions" type="button">Investigate delivery exceptions</button>
+<pre id="logistics-result" role="status" aria-live="polite"></pre>
+</section>
+<script>
+const logisticsResult=document.getElementById('logistics-result');
+async function logisticsFetch(path) {
+  logisticsResult.textContent='Loading synthetic logistics records...';
+  try {
+    const response=await fetch(path,{headers:{'X-Demo-Tenant':document.getElementById('tenant').value}});
+    const data=await response.json();
+    logisticsResult.textContent=JSON.stringify({http_status:response.status,...data},null,2);
+  } catch (error) {
+    logisticsResult.textContent='Logistics request failed: '+String(error);
+  }
+}
+document.getElementById('lookup-logistics').addEventListener('click',()=>{
+  logisticsFetch('/api/v1/logistics/orders/'+encodeURIComponent(document.getElementById('sales-order').value.trim()));
+});
+document.getElementById('lookup-exceptions').addEventListener('click',()=>{
+  logisticsFetch('/api/v1/logistics/exceptions');
+});
+</script>
+</body></html>
