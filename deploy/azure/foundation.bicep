@@ -44,13 +44,22 @@ resource pgDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-0
 resource db 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: '${prefix}-pg'
   location: location
-  sku: { name: 'Standard_D4ds_v5', tier: 'GeneralPurpose' }
+  sku: {
+  name: 'Standard_D4ds_v5'
+  tier: 'GeneralPurpose'
+}
   properties: {
     version: '16'
     administratorLogin: postgresAdminUser
     administratorLoginPassword: postgresAdminPassword
-    storage: { storageSizeGB: 128, autoGrow: 'Enabled' }
-    backup: { backupRetentionDays: 14, geoRedundantBackup: 'Disabled' }
+    storage: {
+  storageSizeGB: 128
+  autoGrow: 'Enabled'
+}
+    backup: {
+  backupRetentionDays: 14
+  geoRedundantBackup: 'Disabled'
+}
     highAvailability: { mode: postgresHighAvailability }
     network: {
       delegatedSubnetResourceId: resourceId('Microsoft.Network/virtualNetworks/subnets',network.name,'postgres')
@@ -76,7 +85,10 @@ resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   location: location
   properties: {
     tenantId: subscription().tenantId
-    sku: { family: 'A', name: 'standard' }
+    sku: {
+  family: 'A'
+  name: 'standard'
+}
     enableRbacAuthorization: true
     enablePurgeProtection: true
     softDeleteRetentionInDays: 90
