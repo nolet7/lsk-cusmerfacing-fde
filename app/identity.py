@@ -14,10 +14,7 @@ from jwt import PyJWKClient
 def jwks_client(url: str):
     return PyJWKClient(url, cache_jwk_set=True, lifespan=300, timeout=3)
 
-def authorized_tenant(
-    x_demo_tenant: str | None = Header(default=None),
-    authorization: str | None = Header(default=None),
-):
+def _resolve_tenant(x_demo_tenant: str | None, authorization: str | None, required_role: str):
     mode=os.getenv("FDE_IDENTITY_MODE","demo").lower()
     if mode=="demo":
         if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
@@ -45,11 +42,23 @@ def authorized_tenant(
     if claims.get("tid") != tenant_id:
         raise HTTPException(403,"Identity tenant mismatch")
     roles=claims.get("roles") or []
-    if not isinstance(roles,list) or "Logistics.Read" not in roles:
-        raise HTTPException(403,"Logistics.Read application role required")
+    if not isinstance(roles,list) or required_role not in roles:
+        raise HTTPException(403,f"{required_role} application role required")
     # Claim must be populated by an approved Entra claims-mapping policy or issued
     # by a trusted API token exchange; do NOT accept a browser-supplied tenant ID.
     customer=claims.get("customer_tenant_id")
     if not isinstance(customer,str) or not customer or len(customer)>64:
         raise HTTPException(403,"Verified customer_tenant_id claim required")
     return customer
+
+def authorized_tenant(
+    x_demo_tenant: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    return _resolve_tenant(x_demo_tenant,authorization,"Logistics.Read")
+
+def authorized_write_tenant(
+    x_demo_tenant: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    return _resolve_tenant(x_demo_tenant,authorization,"Logistics.Write")
