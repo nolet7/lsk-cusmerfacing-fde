@@ -21,3 +21,14 @@ See branch-specific README, `docs/` and `architecture/`. No real customer data. 
 
 ## Safety
 AI never executes database queries or arbitrary HTTP requests supplied by an LLM. It uses pre-approved read-only tool results. Avoid putting customer secrets or sensitive records in prompts.
+
+## Logistics ERP / WMS / TMS feature
+
+The `feature/erp-wms-tms-logistics` branch adds a read-only, tenant-scoped, **synthetic** logistics integration alongside the original customer inquiry demo:
+
+- `GET /api/v1/logistics/orders/{order_id}` — unified ERP order + WMS availability + TMS shipment and delivery-risk assessment.
+- `GET /api/v1/logistics/inventory/{sku}` — simulated available inventory by warehouse.
+- `GET /api/v1/logistics/shipments/{shipment_id}` — carrier, tracking and last event.
+- `GET /api/v1/logistics/exceptions` — delayed or at-risk delivery records.
+
+See [docs/LOGISTICS-INTEGRATION.md](docs/LOGISTICS-INTEGRATION.md) for the architecture, request flow, run commands, negative tenant-isolation tests, and real enterprise deployment blockers. No real ERP, WMS, TMS, carrier, or customer integration is represented.
