@@ -125,7 +125,7 @@ resource gateway 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'gateway'
           image: gatewayImage
           resources: {
-  cpu: 1.0
+  cpu: json('1.0')
   memory: '2Gi'
 }
           env: [
