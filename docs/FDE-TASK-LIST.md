@@ -1,6 +1,6 @@
 # Forward Deployed Engineer implementation backlog and task checklist
 
-This is a working delivery backlog. Status **Implemented** means code was committed to `feature/full-fde-logistics-engagement`; it does **not** mean production validation or automated tests have passed.
+This backlog applies to the Azure enterprise branch. **Implemented** means source exists; only successful CI checks are verified. Azure deployment, real-user access, customer system integrations and 500-user load testing remain unverified.
 
 | ID | Phase | Deliverable / task | Owner | Priority | Status | Acceptance evidence |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -20,17 +20,17 @@ This is a working delivery backlog. Status **Implemented** means code was commit
 | FDE-014 | POC | Run Docker Compose end-to-end smoke and outage tests | FDE + QA | P0 | Pending execution | CI log / evidence |
 | FDE-015 | POC | Customer demo and acceptance signoff | FDE + customer lead | P0 | Pending | UAT record |
 | FDE-016 | Pilot | Implement configurable real ERP/WMS/TMS adapters and approved credentials | FDE + source owners | P0 | Not started | Integration contract test and sandbox evidence |
-| FDE-017 | Pilot | Replace spoofable tenant header with verified OIDC user identity and RBAC/ABAC | Security + FDE | P0 | Not started | Authorization negative tests |
-| FDE-018 | Pilot | Implement Postgres migrations, investigation audit, idempotency and case ownership | Backend | P0 | Not started | Database tests and audit checks |
+| FDE-017 | Pilot | Validate Entra access tokens and enforce real user-to-customer authorization and RBAC/ABAC | Security + FDE | P0 | Partial: JWT/role and claim validator committed; app registration, claim issuance, user-level enforcement and UAT pending | Security and authorization negative tests |
+| FDE-018 | Pilot | Implement Postgres migrations, investigation audit, idempotency and case ownership | Backend | P0 | Partial: Postgres case store, migration and bounded connection pool; audit/idempotency/ownership pending | Private Postgres integration and audit checks |
 | FDE-019 | Pilot | Add data freshness, partial response semantics and reconciler | Integration lead | P0 | Not started | Stale-source and outage test scenarios |
 | FDE-020 | Pilot | SLO telemetry: traces, RED metrics, source-level errors and latency | SRE | P1 | Not started | Dashboard and alert tests |
 | FDE-021 | Pilot | Secure customer-facing case assignment/approval workflow | FDE + product | P1 | Not started | Case lifecycle UAT |
 | FDE-022 | Pilot | Benchmarked user acceptance, workflow time savings and adoption | Customer operations | P0 | Not started | Signed pilot report |
-| FDE-023 | Production | IaC for dev, pilot and prod on GCP; Workload Identity and Secret Manager | Platform | P0 | Not started | Reviewed plans and environment evidence |
-| FDE-024 | Production | Managed database, backup/restore and migration rollback | DBA + SRE | P0 | Not started | Restore drill and RPO/RTO |
+| FDE-023 | Production | Azure Bicep environments, ACA, ACR, Entra, managed identity and Key Vault | Platform | P0 | Partial: foundation/gateway Bicep compiled in CI; no cloud deployment, private endpoints or environment promotion | Azure what-if and deployment evidence |
+| FDE-024 | Production | Azure PostgreSQL Flexible Server, private networking, restore and migration rollback | DBA + SRE | P0 | Partial: template and SQL; restore and migration not tested in Azure | Restore drill and RPO/RTO |
 | FDE-025 | Production | Network policies, TLS, SAST/SCA/SBOM, secret scan and threat model | Security | P0 | Not started | Security signoff |
 | FDE-026 | Production | Retry/backoff, circuit breaker, bulkhead and upstream chaos testing | SRE + FDE | P0 | Not started | Measured outage and recovery evidence |
-| FDE-027 | Production | Performance/load and canary or rollback rehearsal | SRE | P0 | Not started | SLO and rollback results |
+| FDE-027 | Production | Validate 500 named-user Azure profile, burst, failover and rollback | SRE | P0 | Partial: k6 script and autoscaling; no results | Measured SLO and rollback results |
 | FDE-028 | Handover | Runbooks, on-call ownership, enablement, demos and feedback backlog | FDE + CS + SRE | P0 | Not started | Signed handover |
 | FDE-029 | AI option | ACL-aware RAG over approved delivery SOPs and incident guides | AI platform | P2 | Not started | Grounded citations, ACL and evaluation tests |
 | FDE-030 | AI option | Read-only AI shipment explanation and human escalation drafting | AI platform | P2 | Not started | Safety eval and approval boundary |
@@ -70,3 +70,14 @@ This is a working delivery backlog. Status **Implemented** means code was commit
 | Unknown order | 404 |
 | Non-late order investigation | 409 |
 | Real customer go-live request | Blocked pending pilot and production gates |
+
+## Azure branch go-live blockers (2026-11-16)
+
+- [ ] Validate Bicep with ARM what-if and actual sandbox deployment; enforce approved private endpoints and API Management/WAF ingress.
+- [ ] Approve and issue Entra `Logistics.Read` and verified customer-tenant mapping; deliver corporate Entra-aware frontend.
+- [ ] Replace simulated upstream sources with approved real ERP/WMS/TMS adapters and test failure, rate limits and idempotency.
+- [ ] Execute PostgreSQL schema migrations with least privilege, enable audited multi-tenant policy and restore testing.
+- [ ] Run 50-VU nominal profile and separately authorized 500-concurrent-user stress, publish p95/p99 latency and error evidence.
+- [ ] Complete threat model, secrets isolation, observability, runbooks, canary rollback and signoff.
+
+See [Azure enterprise rollout guide](AZURE-ENTERPRISE-500-USERS.md).
