@@ -70,7 +70,7 @@ def portal():
 
 @app.get("/health")
 def health():
-    return {"status":"ok","mode":"synthetic-demo"}
+    return {"status":"ok","mode":"synthetic-demo" if os.getenv("FDE_ENV","local").lower() in ("local","test") else "enterprise-gateway"}
 
 @app.get("/api/v1/orders/{order_id}")
 def get_order(order_id:str, x_demo_tenant: str | None = Header(default=None)):
