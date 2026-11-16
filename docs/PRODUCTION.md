@@ -18,7 +18,7 @@ A demo uses local SQLite and the header tenant mechanism. **It is not permitted 
 - Exercise blue/green or canary release, rollback and versioned API compatibility, operational support rota and incident drill.
 
 ## Proposed environment map
-Dev -> POC local demo; Pilot -> sandbox cloud namespace and enterprise IdP; Production -> hardened GKE cluster with external HTTPS load balancer, Workload Identity, Secret Manager, private service networking, Cloud SQL Postgres, managed telemetry, GitOps approval, autoscaling and budgets. Infrastructure described here is proposed and not provisioned.
+Dev -> POC local demo; Azure sandbox/pilot -> Azure Container Apps, Microsoft Entra ID protected API, managed identity, Azure Key Vault, VNet-integrated Azure Database for PostgreSQL Flexible Server, ACR and Log Analytics. Production additionally requires an Entra-aware frontend, real source adapters, private endpoints, API Management/WAF, audited tenant policies, measured load/failover/restore/rollback and support approvals. Bicep scaffolding exists on the Azure feature branch; cloud provisioning has not been performed.
 
 ## Release evidence checklist
 PR reviewed; tests green; no secrets in git; image digest signed; vulnerability gate clear; migration dry run; smoke test and negative tenant tests; model eval passed; customer UAT signed; threat model accepted; rollback rehearsal; change approval.
@@ -28,3 +28,7 @@ PR reviewed; tests green; no secrets in git; image digest signed; vulnerability 
 
 ## Handover packet
 Architecture diagrams, customer integration mapping, API documentation, implementation guide, demo script, prompt/model versions, evaluation evidence, security decisions, runbook, escalation path, release checklist, known limitations, Product feedback and Customer Success enablement.
+
+
+## Azure enterprise branch
+The Azure path is documented in [AZURE-ENTERPRISE-500-USERS.md](AZURE-ENTERPRISE-500-USERS.md). The new enterprise gateway rejects demo identity and relies on Entra JWT access tokens plus PostgreSQL cases. The legacy demo-only app and local Compose instructions above remain **local sandbox only**. A Bicep template compiling in CI is not an Azure deployment nor 500-user capacity validation.
