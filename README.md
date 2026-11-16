@@ -216,3 +216,32 @@ architecture/
 The current state is a **reproducible FDE POC**, not an enterprise production platform. Before claiming deployment to a multinational customer: integrate approved real ERP/WMS/TMS sandboxes; implement actual OIDC/SSO and granular access; rotate secrets in a manager; add production-managed databases, audit and case ownership; enforce allowlisted egress and circuit breakers; verify upstream failure, data freshness and reconciliation; deploy IaC to controlled environments; validate observability, SLOs, security, backup restoration, rollback and signed UAT.
 
 **Resume alignment (simulation):** Developed a customer-facing FastAPI POC that connects independently running simulated ERP, warehouse and transportation services over HTTP, giving logistics users unified order, inventory and shipment visibility and a manual delayed-delivery investigation workflow. **Do not claim it is a live enterprise integration or measured customer impact until that work has been performed and evidenced.**
+
+## Azure enterprise deployment target — 500 named users
+
+The `feature/azure-enterprise-500-users` branch is the **Azure enterprise engineering track** for the existing FDE customer scenario, preserving the functioning local synthetic integration POC while adding Azure deployment artifacts, runtime authorization requirements and shared case persistence.
+
+**Start here:** [Azure 500-user architecture, step-by-step deployment and verification gates](docs/AZURE-ENTERPRISE-500-USERS.md).
+
+### Deployment architecture
+
+- **Compute:** Azure Container Apps gateway with minimum 2 and maximum 12 replicas and HTTP-concurrency autoscaling.
+- **Identity:** Microsoft Entra protected API access-token validation, `Logistics.Read` application role, and explicitly issued, verified `customer_tenant_id` claim. Browser-supplied demo tenant headers are **blocked** in deployed mode.
+- **Data:** Azure Database for PostgreSQL Flexible Server using private VNet integration, a reviewed migration, and a bounded per-replica connection pool. Demo SQLite cases are forbidden in deployed mode.
+- **Security:** Azure Key Vault secret references and a user-assigned managed identity; Container Registry access through Azure role assignment. Entra-aware enterprise frontend, perimeter restrictions, and real integration credentials still need customer setup.
+- **Platform:** Bicep for networking, private Postgres, ACR, Key Vault, managed identity, Log Analytics and the Azure Container Apps gateway.
+- **Testing:** Azure Bicep build, Python regression and security checks, and a k6 workload profile for **500 named users / 50 concurrent active users** as an initial capacity hypothesis.
+
+The 500-user design is **not yet load-tested or certified**. The current gateway uses synthetic upstream connectors and still requires real ERP/WMS/TMS adapters, a corporate Entra-aware frontend, private network and WAF controls, audited multitenancy, real Azure validation, customer acceptance and production governance. The release gate is explicitly blocked until those requirements are met.
+
+### Azure source files
+
+- [Foundation Bicep](deploy/azure/foundation.bicep)
+- [Azure Container Apps Bicep](deploy/azure/aca-gateway.bicep)
+- [Enterprise authentication](app/identity.py)
+- [PostgreSQL case store](app/case_store.py)
+- [Database migration](migrations/001_investigations.sql)
+- [500-user capacity scenario](load/azure-500-users.js)
+- [Azure deployment guide](docs/AZURE-ENTERPRISE-500-USERS.md)
+
+The original local development workflow remains available via `docker compose -f deploy/compose.yaml up --build -d --wait`.
