@@ -4,18 +4,28 @@ Migrations are explicit: run migrations/001_investigations.sql via controlled pi
 Connections use TLS via DATABASE_URL parameters (sslmode=verify-full recommended).
 """
 import os
+from functools import lru_cache
 from fastapi import HTTPException
 
 def is_postgres():
     return os.getenv("FDE_CASE_STORE","sqlite").lower()=="postgres"
 
-def _postgres():
-    import psycopg
+@lru_cache(maxsize=1)
+def _pool(url: str, max_size: int):
+    from psycopg_pool import ConnectionPool
     from psycopg.rows import dict_row
+    return ConnectionPool(conninfo=url, min_size=1, max_size=max_size,
+                          kwargs={"row_factory":dict_row,"connect_timeout":5},
+                          timeout=5, open=True)
+
+def _postgres():
     url=os.getenv("DATABASE_URL")
     if not url:
         raise HTTPException(503,"DATABASE_URL not configured")
-    return psycopg.connect(url,connect_timeout=5,row_factory=dict_row)
+    max_size=int(os.getenv("DB_POOL_MAX","5"))
+    if max_size < 1 or max_size > 20:
+        raise HTTPException(503,"Invalid database pool size")
+    return _pool(url,max_size).connection()
 
 def create_investigation(tenant_id,order_id,reason,note,local_connect):
     if is_postgres():
