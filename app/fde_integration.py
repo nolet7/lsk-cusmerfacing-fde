@@ -9,7 +9,7 @@ from datetime import date
 from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
-from app.identity import authorized_tenant
+from app.identity import authorized_tenant, authorized_write_tenant
 from app import case_store
 from pydantic import BaseModel, Field
 
@@ -124,7 +124,7 @@ class InvestigationRequest(BaseModel):
     note:str=Field(min_length=3,max_length=1000)
 
 @router.post("/investigations",status_code=201)
-async def open_investigation(body:InvestigationRequest,tenant_id: str = Depends(authorized_tenant)):
+async def open_investigation(body:InvestigationRequest,tenant_id: str = Depends(authorized_write_tenant)):
     tenant_id=tenant_id
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
