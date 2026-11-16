@@ -43,9 +43,13 @@ def startup():
             raise RuntimeError('Deployed environments require Entra identity and PostgreSQL case store')
         if not os.getenv('ENTRA_TENANT_ID') or not os.getenv('ENTRA_API_AUDIENCE') or not os.getenv('DATABASE_URL'):
             raise RuntimeError('Missing enterprise identity/database configuration')
-    initialize()
-    logistics.initialize(connect)
-    fde_integration.initialize(connect)
+    if os.getenv("FDE_ENV","local").lower() in ("local","test"):
+        initialize()
+        logistics.initialize(connect)
+        fde_integration.initialize(connect)
+    else:
+        # Never create synthetic SQLite data or customer demo records in Azure.
+        fde_integration.configure(connect, tenant)
 
 class Inquiry(BaseModel):
     order_id: str = Field(min_length=3,max_length=64)
