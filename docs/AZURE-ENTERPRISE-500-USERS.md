@@ -47,7 +47,7 @@ flowchart LR
 | Load-test stages | 10 -> 50 active VUs, sustained 5 min, gradual ramp-down |
 | Stretch test | 500 concurrent authenticated VUs, separately authorized; revise scaling from results |
 
-These are **planning parameters**, not evidence of capacity. The current order lookup retrieves ERP first, then executes independent WMS and TMS reads concurrently. At high latency, external ERP/WMS/TMS connectors—not the ACA replica count—may be the primary bottleneck. Capture true upstream p95 latency, error rates, API limits and data freshness obligations before final sizing.
+These are **planning parameters**, not evidence of capacity. The current order lookup retrieves ERP first, then executes independent WMS and TMS reads concurrently. **The enterprise exception-list endpoint deliberately returns 503** until a paginated, indexed, freshness-aware exception read model is implemented; the old demo fan-out across up to 100 orders is not safe for a 500-user rollout. At high latency, external ERP/WMS/TMS connectors—not the ACA replica count—may be the primary bottleneck. Capture true upstream p95 latency, error rates, API limits and data freshness obligations before final sizing.
 
 Load profile: `load/azure-500-users.js`, using k6 with a valid sandbox Entra access token. Its threshold is <1% HTTP failures and p95 under 1500 ms; the script's 50-VU ramp validates a **500-person population assumption** and is not itself a 500-concurrent-user certification.
 
