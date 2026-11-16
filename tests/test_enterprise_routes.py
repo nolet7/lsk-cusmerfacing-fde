@@ -10,8 +10,8 @@ def test_enterprise_exception_api_paginates_without_fanout(monkeypatch):
     monkeypatch.setenv("ENTRA_TENANT_ID","00000000-0000-0000-0000-000000000001")
     monkeypatch.setenv("ENTRA_API_AUDIENCE","api://lsk-logistics")
     monkeypatch.setenv("DATABASE_URL","postgresql://example.invalid/db")
-    with patch("app.identity.authorized_tenant",return_value="acme-air"):
-        # Dependency overrides affect the original dependency callable.
+    if True:
+        # Override the ORIGINAL FastAPI dependency callable; never a mock replacement.
         from app.identity import authorized_tenant
         app.dependency_overrides[authorized_tenant] = lambda: "acme-air"
         try:
