@@ -1,0 +1,32 @@
+name: Azure enterprise validation
+on:
+  pull_request:
+  push:
+    branches: [feature/azure-enterprise-500-users]
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: python -m compileall -q app services scripts
+  bicep-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Azure CLI / Bicep and compile templates
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az bicep install
+            az bicep build --file deploy/azure/foundation.bicep
+            az bicep build --file deploy/azure/aca-gateway.bicep
