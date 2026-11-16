@@ -33,6 +33,10 @@ async def refresh_tenant(client,cfg,tenant):
                    (tenant_id,order_id,reason_code,promised_date,estimated_delivery,delivered_at,
                     shipment_status,source_event,source_updated_at)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",values)
+            db.execute("""INSERT INTO exception_refresh_state(tenant_id,refreshed_at,indexed_count)
+                           VALUES (%s,now(),%s) ON CONFLICT (tenant_id)
+                           DO UPDATE SET refreshed_at=EXCLUDED.refreshed_at,
+                                         indexed_count=EXCLUDED.indexed_count""",(tenant,len(results)))
     return len(results)
 
 async def main():
