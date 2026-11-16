@@ -128,3 +128,16 @@ async def deny_legacy_in_enterprise(request: Request, call_next):
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=404,content={"detail":"Demo UI and v1 routes disabled in enterprise mode"})
     return await call_next(request)
+
+@app.get("/ready")
+def readiness():
+    """Enterprise readiness checks case database, not just FastAPI process lifetime."""
+    if os.getenv("FDE_ENV","local").lower() in ("local","test"):
+        return {"status":"ready","mode":"synthetic-local"}
+    from app.case_store import _postgres
+    try:
+        with _postgres() as db:
+            db.execute("SELECT 1")
+    except Exception:
+        raise HTTPException(503,"Case database unavailable") from None
+    return {"status":"ready","mode":"enterprise-gateway"}
