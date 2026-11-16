@@ -110,6 +110,10 @@ async def unified_order(order_id:str,tenant_id: str = Depends(authorized_tenant)
 
 @router.get("/exceptions")
 async def exceptions(tenant_id: str = Depends(authorized_tenant)):
+    # Demo list performs N+1 source calls. Prevent unbounded enterprise fan-out
+    # until a paginated, freshness-aware indexed exception read model is in place.
+    if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
+        raise HTTPException(503,"Enterprise exception feed requires approved indexed read model")
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         listing=await source(client,cfg["ERP_BASE_URL"],"/v1/orders",
