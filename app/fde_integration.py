@@ -41,7 +41,10 @@ def initialize(connect):
 def config():
     values = {n:os.getenv(n) for n in ("ERP_BASE_URL","WMS_BASE_URL","TMS_BASE_URL","DEMO_CONNECTOR_TOKEN")}
     if any(not v for v in values.values()):
-        raise HTTPException(503, "Upstream simulator integration is not configured")
+        raise HTTPException(503, "Upstream integration is not configured")
+    if os.getenv("FDE_ENV","local").lower() not in ("local","test"):
+        if any(not values[name].startswith("https://") for name in ("ERP_BASE_URL","WMS_BASE_URL","TMS_BASE_URL")):
+            raise HTTPException(503,"Enterprise upstream connectors must use HTTPS")
     return values
 
 async def source(client, base, path, params, token):
