@@ -92,19 +92,18 @@ async def snapshot(client, cfg, tenant_id, order_id):
         inventory = {**inventory,"available":max(inventory["on_hand"]-inventory["reserved"],0)}
     return {"order":order,"inventory":inventory,"shipment":shipment,
             "late_delivery":assess(order,shipment),
-            "sources":{"erp":"HTTP ERP simulator","wms":"HTTP WMS simulator","tms":"HTTP TMS simulator"},
-            "as_of_date":date.today().isoformat(),"data_mode":"synthetic-http-integration"}
+            "sources":{"erp":"Configured ERP HTTP source","wms":"Configured WMS HTTP source","tms":"Configured TMS HTTP source"},
+            "as_of_date":date.today().isoformat(),
+            "data_mode":"synthetic-http-integration" if os.getenv("FDE_ENV","local") in ("local","test") else "configured-external-connectors"}
 
 @router.get("/orders/{order_id}")
 async def unified_order(order_id:str,tenant_id: str = Depends(authorized_tenant)):
-    tenant_id = tenant_id
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         return await snapshot(client,cfg,tenant_id,order_id)
 
 @router.get("/exceptions")
 async def exceptions(tenant_id: str = Depends(authorized_tenant)):
-    tenant_id = tenant_id
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         listing=await source(client,cfg["ERP_BASE_URL"],"/v1/orders",
@@ -117,7 +116,7 @@ async def exceptions(tenant_id: str = Depends(authorized_tenant)):
             result=await snapshot(client,cfg,tenant_id,order["order_id"])
             if result["late_delivery"]["is_late_or_at_risk"]:
                 items.append(result)
-        return {"count":len(items),"items":items,"data_mode":"synthetic-http-integration"}
+        return {"count":len(items),"items":items,"data_mode":"synthetic-http-integration" if os.getenv("FDE_ENV","local") in ("local","test") else "configured-external-connectors"}
 
 class InvestigationRequest(BaseModel):
     order_id:str=Field(min_length=3,max_length=64)
@@ -125,7 +124,6 @@ class InvestigationRequest(BaseModel):
 
 @router.post("/investigations",status_code=201)
 async def open_investigation(body:InvestigationRequest,tenant_id: str = Depends(authorized_write_tenant)):
-    tenant_id=tenant_id
     cfg=config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(3.0),trust_env=False) as client:
         result=await snapshot(client,cfg,tenant_id,body.order_id)
@@ -134,9 +132,8 @@ async def open_investigation(body:InvestigationRequest,tenant_id: str = Depends(
         raise HTTPException(409,"Order has no detected delivery exception")
     investigation_id=case_store.create_investigation(tenant_id,body.order_id,reason,body.note,_connect)
     return {"investigation_id":investigation_id,"order_id":body.order_id,
-            "reason_code":reason,"status":"OPEN","data_mode":"synthetic"}
+            "reason_code":reason,"status":"OPEN","data_mode":"synthetic" if os.getenv("FDE_ENV","local") in ("local","test") else "enterprise-case-store"}
 
 @router.get("/investigations")
 def list_investigations(tenant_id: str = Depends(authorized_tenant)):
-    tenant_id=tenant_id
-    return {"items":case_store.list_investigations(tenant_id,_connect),"data_mode":"synthetic"}
+    return {"items":case_store.list_investigations(tenant_id,_connect),"data_mode":"synthetic" if os.getenv("FDE_ENV","local") in ("local","test") else "enterprise-case-store"}
