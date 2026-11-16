@@ -76,6 +76,7 @@ This backlog applies to the Azure enterprise branch. **Implemented** means sourc
 - [ ] Validate Bicep with ARM what-if and actual sandbox deployment; enforce approved private endpoints and API Management/WAF ingress.
 - [ ] Approve and issue Entra `Logistics.Read` and verified customer-tenant mapping; deliver corporate Entra-aware frontend.
 - [ ] Replace simulated upstream sources with approved real ERP/WMS/TMS adapters and test failure, rate limits and idempotency.
+- [ ] Replace the demo N+1 exception scan with a bounded indexed/paginated read model and monitored ingestion; Azure runtime currently returns 503 for this operation.
 - [ ] Execute PostgreSQL schema migrations with least privilege, enable audited multi-tenant policy and restore testing.
 - [ ] Run 50-VU nominal profile and separately authorized 500-concurrent-user stress, publish p95/p99 latency and error evidence.
 - [ ] Complete threat model, secrets isolation, observability, runbooks, canary rollback and signoff.
