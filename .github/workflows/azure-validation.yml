@@ -30,3 +30,22 @@ jobs:
             az bicep install
             az bicep build --file deploy/azure/foundation.bicep
             az bicep build --file deploy/azure/aca-gateway.bicep
+            az bicep build --file deploy/azure/exception-refresh-job.bicep
+
+  enterprise-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build Entra SPA with nonsecret placeholder IDs
+        working-directory: enterprise-ui
+        env:
+          VITE_ENTRA_TENANT_ID: 00000000-0000-0000-0000-000000000001
+          VITE_ENTRA_SPA_CLIENT_ID: 00000000-0000-0000-0000-000000000002
+          VITE_ENTRA_API_SCOPE: api://test/Logistics.Access
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
