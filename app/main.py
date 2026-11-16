@@ -141,8 +141,12 @@ def readiness():
     from app.case_store import _postgres
     try:
         with _postgres() as db:
-            row=db.execute("SELECT to_regclass('public.investigations') IS NOT NULL AS migrated").fetchone()
-            if not row or not row["migrated"]:
+            row=db.execute("""SELECT
+                to_regclass('public.investigations') IS NOT NULL AS cases_ready,
+                to_regclass('public.delivery_exceptions') IS NOT NULL AS exceptions_ready,
+                to_regclass('public.exception_refresh_state') IS NOT NULL AS refresh_ready
+                """).fetchone()
+            if not row or not all(row.values()):
                 raise RuntimeError("Database migration missing")
     except Exception:
         raise HTTPException(503,"Case database unavailable") from None
